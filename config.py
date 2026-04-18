@@ -63,9 +63,10 @@ class SensorConfig:
         usbl_position_noise_std: СКО шума гидроакустики по координатам (м).
         usbl_rate: Частота обновления гидроакустики (Гц).
     """
-    # ИНС (раздел 2.3)
-    ins_gyro_noise_std: float = 0.01        # рад/с
-    ins_accel_noise_std: float = 0.05       # м/с²
+    # ИНС (раздел 2.3) — шумы МЭМС навигационного класса
+    ins_gyro_noise_std: float = 0.05        # рад/с (~2.9°/с, белый шум)
+    ins_accel_noise_std: float = 0.1        # м/с² (белый шум)
+    ins_gyro_bias_drift_std: float = 0.0001 # рад/с/шаг (дрейф гироскопа)
     ins_rate: float = 10.0                  # Гц (при dt=0.1 с)
 
     # DVL — σ_DVL = 0.03 м/с с учётом температурной погрешности (раздел 2.3)

@@ -71,6 +71,10 @@ class AUVParams:
     dvl_base_noise_std: float = 0.02      # м/с (базовая)
     dvl_temp_noise_std: float = 0.01      # м/с (температурная добавка)
 
+    # --- Погрешности ИНС (раздел 2.3) ---
+    ins_gyro_noise_std: float = 0.05      # рад/с (белый шум МЭМС гироскопа)
+    ins_accel_noise_std: float = 0.1      # м/с² (белый шум МЭМС акселерометра)
+
     # --- Начальная неопределённость ---
     initial_position_uncertainty: float = 10.0   # м
     initial_speed_uncertainty: float = 0.5       # м/с
@@ -132,6 +136,16 @@ class AUVParams:
 
         Q = diag(0, 0, σ²_wV, σ²_wψ)
 
+        Шум процесса складывается из двух источников:
+        1. Неопределённость модели (из динамических пределов аппарата,
+           правило 3σ).
+        2. Шум ИНС, который подаётся на вход модели через predict().
+           За один шаг Δt ИНС вносит ошибку:
+             σ_ins_v = σ_accel × Δt  (ошибка скорости от шума акселерометра)
+             σ_ins_ψ = σ_gyro × Δt   (ошибка курса от шума гироскопа)
+
+        Суммарная дисперсия: σ² = σ²_model + σ²_ins (раздел 2.1).
+
         Шум по координатам (x, y) не вводится, так как координаты
         являются интегральными величинами — их неопределённость
         нарастает через модель движения (раздел 2.1).
@@ -139,8 +153,17 @@ class AUVParams:
         Returns:
             Вектор [0, 0, σ²_wV, σ²_wψ] размерности 4.
         """
-        sigma_v, sigma_psi = self.process_noise_std()
-        return np.array([0.0, 0.0, sigma_v ** 2, sigma_psi ** 2])
+        sigma_v_model, sigma_psi_model = self.process_noise_std()
+
+        # Вклад шума ИНС за один шаг
+        sigma_v_ins = self.ins_accel_noise_std * self.dt
+        sigma_psi_ins = self.ins_gyro_noise_std * self.dt
+
+        # Суммарная дисперсия (независимые источники складываются)
+        sigma_v_total_sq = sigma_v_model ** 2 + sigma_v_ins ** 2
+        sigma_psi_total_sq = sigma_psi_model ** 2 + sigma_psi_ins ** 2
+
+        return np.array([0.0, 0.0, sigma_v_total_sq, sigma_psi_total_sq])
 
     def compute_P0_diag(self) -> np.ndarray:
         """Диагональ начальной ковариационной матрицы P0.
@@ -178,6 +201,7 @@ class AUVParams:
     def summary(self) -> str:
         """Текстовое описание параметров и вычисленных величин."""
         sigma_v, sigma_psi = self.process_noise_std()
+        Q = self.compute_Q_diag()
         lines = [
             "=== Параметры НПА ===",
             f"  Масса:               {self.mass} кг",
@@ -192,13 +216,22 @@ class AUVParams:
             f"  Температура:         {self.temperature}°C",
             f"  Скорость звука:      {self.sound_speed} м/с",
             "",
+            "=== Шумы ИНС (МЭМС, раздел 2.3) ===",
+            f"  σ_gyro:              {self.ins_gyro_noise_std} рад/с "
+            f"({np.rad2deg(self.ins_gyro_noise_std):.2f}°/с)",
+            f"  σ_accel:             {self.ins_accel_noise_std} м/с²",
+            f"  σ_ins_v (за шаг):    {self.ins_accel_noise_std * self.dt:.6f} м/с",
+            f"  σ_ins_ψ (за шаг):    {self.ins_gyro_noise_std * self.dt:.6f} рад",
+            "",
             "=== Вычисленные величины ===",
             f"  ΔV_max:              {self.delta_v_max():.6f} м/с",
             f"  Δψ_max:              {self.delta_psi_max():.6f} рад "
             f"({np.rad2deg(self.delta_psi_max()):.4f}°)",
-            f"  σ_wV:                {sigma_v:.6f} м/с",
-            f"  σ_wψ:                {sigma_psi:.6f} рад",
-            f"  Q_diag:              {self.compute_Q_diag()}",
+            f"  σ_wV (модель):       {sigma_v:.6f} м/с",
+            f"  σ_wψ (модель):       {sigma_psi:.6f} рад",
+            f"  σ_wV (суммарный):    {np.sqrt(Q[2]):.6f} м/с",
+            f"  σ_wψ (суммарный):    {np.sqrt(Q[3]):.6f} рад",
+            f"  Q_diag:              {Q}",
             f"  P0_diag:             {self.compute_P0_diag()}",
             f"  σ_DVL (с учётом T):  {self.dvl_total_noise_std():.4f} м/с",
         ]

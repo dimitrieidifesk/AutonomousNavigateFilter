@@ -77,6 +77,10 @@ class DataGenerator:
         """
         np.random.seed(self._seed)
 
+        # Сброс дрейфа ИНС для нового сценария
+        if hasattr(self._ins, 'reset_bias'):
+            self._ins.reset_bias()
+
         N = len(trajectory.timestamps)
         dt = trajectory.timestamps[1] - trajectory.timestamps[0] if N > 1 else 0.02
 

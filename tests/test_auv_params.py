@@ -82,16 +82,18 @@ class TestComputeQDiag:
         assert Q_diag[1] == 0.0
 
     def test_q_v_component(self, auv_params):
-        """Q[2] = σ²_wV."""
+        """Q[2] = σ²_model_v + (σ_accel * dt)²."""
         sigma_v, _ = auv_params.process_noise_std()
+        ins_v = auv_params.ins_accel_noise_std * auv_params.dt
         Q_diag = auv_params.compute_Q_diag()
-        assert Q_diag[2] == pytest.approx(sigma_v ** 2, rel=1e-10)
+        assert Q_diag[2] == pytest.approx(sigma_v ** 2 + ins_v ** 2, rel=1e-10)
 
     def test_q_psi_component(self, auv_params):
-        """Q[3] = σ²_wψ."""
+        """Q[3] = σ²_model_ψ + (σ_gyro * dt)²."""
         _, sigma_psi = auv_params.process_noise_std()
+        ins_psi = auv_params.ins_gyro_noise_std * auv_params.dt
         Q_diag = auv_params.compute_Q_diag()
-        assert Q_diag[3] == pytest.approx(sigma_psi ** 2, rel=1e-10)
+        assert Q_diag[3] == pytest.approx(sigma_psi ** 2 + ins_psi ** 2, rel=1e-10)
 
     def test_q_all_non_negative(self, auv_params):
         """Все элементы Q_diag ≥ 0."""

@@ -110,6 +110,7 @@ def create_sensors(sensor_cfg: SensorConfig) -> tuple[INS, list]:
     ins = INS(
         gyro_noise_std=sensor_cfg.ins_gyro_noise_std,
         accel_noise_std=sensor_cfg.ins_accel_noise_std,
+        gyro_bias_drift_std=sensor_cfg.ins_gyro_bias_drift_std,
         rate=sensor_cfg.ins_rate,
     )
     dvl = DVL(noise_std=sensor_cfg.dvl_speed_noise_std, rate=sensor_cfg.dvl_rate)

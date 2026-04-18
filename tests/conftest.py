@@ -114,8 +114,13 @@ def usbl():
 
 @pytest.fixture
 def ins():
-    """ИНС."""
-    return INS(gyro_noise_std=0.01, accel_noise_std=0.05, rate=50.0)
+    """ИНС (МЭМС навигационного класса, раздел 2.3)."""
+    return INS(
+        gyro_noise_std=0.05,
+        accel_noise_std=0.1,
+        gyro_bias_drift_std=0.0001,
+        rate=10.0,
+    )
 
 
 @pytest.fixture
